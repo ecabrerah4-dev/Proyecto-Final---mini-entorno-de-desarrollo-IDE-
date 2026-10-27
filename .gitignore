@@ -1,0 +1,24 @@
+# Configuracion privada
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Bases de datos locales
+data/*.db
+data/*.sqlite
+data/*.sqlite3
+
+# Archivos temporales y logs
+*.log
+.DS_Store
+Thumbs.db
+
+# IDE y editores
+.vscode/
+.idea/

@@ -1,0 +1,93 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>disable</Nullable>
+	<NoWarn>$(NoWarn);SYSLIB0051</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Folder Include="DataModel\" />
+    <Folder Include="DdlStrategies\" />
+    <Folder Include="Utilities\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="envdte" Version="17.14.40260" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Update="DataSources\ChinookDataSet.Designer.cs">
+      <DesignTime>True</DesignTime>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>ChinookDataSet.xsd</DependentUpon>
+    </Compile>
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="DataSources\ChinookDatabase.tt">
+      <Generator>TextTemplatingFileGenerator</Generator>
+      <LastGenOutput>ChinookDatabase.txt</LastGenOutput>
+    </None>
+    <None Update="DataSources\ChinookDatabase.txt">
+      <DesignTime>True</DesignTime>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>ChinookDatabase.tt</DependentUpon>
+    </None>
+    <None Update="DataSources\ChinookDataSet.xsd">
+      <Generator>MSDataSetGenerator</Generator>
+      <LastGenOutput>ChinookDataSet.Designer.cs</LastGenOutput>
+    </None>
+    <None Update="_T4Templates\Chinook.tt">
+      <Generator>TextTemplatingFileGenerator</Generator>
+      <LastGenOutput>Chinook.ttinclude</LastGenOutput>
+    </None>
+    <None Update="_T4Templates\Chinook.ttinclude">
+      <DesignTime>True</DesignTime>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>Chinook.tt</DependentUpon>
+    </None>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Service Include="{508349b6-6b84-4df5-91f0-309beebad82d}" />
+  </ItemGroup>
+
+  <!-- T4 Template Generation with dotnet-t4 tool -->
+  <PropertyGroup>
+    <NewtonsoftJsonDll>$(NuGetPackageRoot)newtonsoft.json\13.0.3\lib\net6.0\Newtonsoft.Json.dll</NewtonsoftJsonDll>
+    <VisualStudioInteropDll>$(NuGetPackageRoot)microsoft.visualstudio.interop\17.14.40260\lib\net8.0\Microsoft.VisualStudio.Interop.dll</VisualStudioInteropDll>
+  </PropertyGroup>
+
+  <!-- Generate T4 templates before build -->
+  <Target Name="GenerateT4Templates" BeforeTargets="BeforeBuild">
+    <Message Text="Generating T4 templates..." Importance="high" />
+
+    <!-- Generate Chinook.ttinclude first -->
+    <Exec Command="t4 -r=&quot;$(NewtonsoftJsonDll)&quot; _T4Templates/Chinook.tt"
+          ContinueOnError="false"
+          WorkingDirectory="$(MSBuildProjectDirectory)" />
+
+    <!-- Generate ChinookDatabase SQL scripts -->
+    <Exec Command="t4 -r=&quot;$(NewtonsoftJsonDll)&quot; -r=&quot;$(VisualStudioInteropDll)&quot; DataSources/ChinookDatabase.tt"
+          ContinueOnError="false"
+          WorkingDirectory="$(MSBuildProjectDirectory)" />
+
+    <Message Text="T4 templates generated successfully" Importance="high" />
+  </Target>
+
+  <!-- Check if t4 tool is available -->
+  <Target Name="CheckT4Tool" BeforeTargets="GenerateT4Templates">
+    <Exec Command="echo dotnet-t4 is installed | t4 -o -"
+          ContinueOnError="true"
+          IgnoreExitCode="true">
+      <Output TaskParameter="ExitCode" PropertyName="T4ExitCode" />
+    </Exec>
+
+    <Error Text="T4 command line tool not found. Please install it with: dotnet tool install -g dotnet-t4"
+           Condition="$(T4ExitCode) != 0" />
+  </Target>
+
+</Project>

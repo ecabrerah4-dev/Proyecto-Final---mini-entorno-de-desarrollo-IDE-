@@ -1,0 +1,108 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>disable</Nullable>
+	<EnableUnsafeBinaryFormatterSerialization>true</EnableUnsafeBinaryFormatterSerialization>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.1" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="8.0.0" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.8.0" />
+    <PackageReference Include="MySql.Data" Version="8.3.0" />
+    <PackageReference Include="Npgsql" Version="8.0.3" />
+    <PackageReference Include="ODP.NetCore" Version="2.0.12" />
+    <PackageReference Include="System.Data.SQLite" Version="1.0.119" />
+    <PackageReference Include="System.Data.SqlClient" Version="4.9.0" />
+    <PackageReference Include="xunit" Version="2.6.6" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.5.6">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Xunit.SkippableFact" Version="1.5.23" />
+  </ItemGroup>
+
+  <!-- Platform-specific DB2 packages -->
+  <ItemGroup Condition="$([MSBuild]::IsOSPlatform('Windows'))">
+    <PackageReference Include="Net.IBM.Data.Db2" Version="9.0.0.300" />
+  </ItemGroup>
+
+  <ItemGroup Condition="$([MSBuild]::IsOSPlatform('Linux'))">
+    <PackageReference Include="Net.IBM.Data.Db2-lnx" Version="9.0.0.300" />
+  </ItemGroup>
+
+  <ItemGroup Condition="$([MSBuild]::IsOSPlatform('OSX'))">
+    <PackageReference Include="Net.IBM.Data.Db2-osx" Version="9.0.0.300" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ChinookDatabase\ChinookDatabase.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="appsettings.test.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="DatabaseTests\DatabaseFixture.tt">
+      <Generator>TextTemplatingFileGenerator</Generator>
+      <LastGenOutput>DatabaseFixture.cs</LastGenOutput>
+    </None>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Service Include="{508349b6-6b84-4df5-91f0-309beebad82d}" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Update="DatabaseTests\DatabaseFixture.cs">
+      <DesignTime>True</DesignTime>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>DatabaseFixture.tt</DependentUpon>
+    </Compile>
+  </ItemGroup>
+
+  <!-- T4 Template Generation for Test Project -->
+  <PropertyGroup>
+    <NewtonsoftJsonDll>$(NuGetPackageRoot)newtonsoft.json\13.0.3\lib\net6.0\Newtonsoft.Json.dll</NewtonsoftJsonDll>
+    <VisualStudioInteropDll>$(NuGetPackageRoot)microsoft.visualstudio.interop\17.14.40260\lib\net8.0\Microsoft.VisualStudio.Interop.dll</VisualStudioInteropDll>
+  </PropertyGroup>
+
+  <!-- Generate DatabaseFixture T4 template before build -->
+  <Target Name="GenerateT4Templates" BeforeTargets="BeforeBuild">
+    <Message Text="Generating test T4 templates..." Importance="high" />
+
+    <!-- Generate DatabaseFixture test files -->
+    <Exec Command="t4 -r=&quot;$(NewtonsoftJsonDll)&quot; -r=&quot;$(VisualStudioInteropDll)&quot; DatabaseFixture.tt" ContinueOnError="false" WorkingDirectory="$(MSBuildProjectDirectory)/DatabaseTests" />
+
+    <Message Text="Test T4 templates generated successfully" Importance="high" />
+  </Target>
+
+  <!-- Check if t4 tool is available -->
+  <Target Name="CheckT4Tool" BeforeTargets="GenerateT4Templates">
+    <Exec Command="echo dotnet-t4 is installed | t4 -o -" ContinueOnError="true" IgnoreExitCode="true">
+      <Output TaskParameter="ExitCode" PropertyName="T4ExitCode" />
+    </Exec>
+
+    <Error Text="T4 command line tool not found. Please install it with: dotnet tool install -g dotnet-t4" Condition="$(T4ExitCode) != 0" />
+  </Target>
+
+  <!-- Create symlinks for DB2 native libraries on Linux -->
+  <Target Name="CreateDb2NativeLibrarySymlinks" AfterTargets="Build" Condition="$([MSBuild]::IsOSPlatform('Linux'))">
+    <Message Text="Creating symlinks for DB2 native libraries on Linux..." Importance="high" />
+
+    <PropertyGroup>
+      <NativeLibPath>$(OutputPath)runtimes/linux-x64/native</NativeLibPath>
+      <CliDriverLibPath>$(OutputPath)clidriver/lib</CliDriverLibPath>
+    </PropertyGroup>
+
+    <!-- Create symlinks if clidriver exists -->
+    <Exec Command="test -d &quot;$(CliDriverLibPath)&quot; &amp;&amp; mkdir -p &quot;$(NativeLibPath)&quot; &amp;&amp; ln -sf ../../../clidriver/lib/libdb2.so &quot;$(NativeLibPath)/libdb2.so&quot; &amp;&amp; ln -sf ../../../clidriver/lib/libdb2clixml4c.so &quot;$(NativeLibPath)/libdb2clixml4c.so&quot; &amp;&amp; ln -sf ../../../clidriver/lib/libDB2xml4c.so &quot;$(NativeLibPath)/libDB2xml4c.so&quot; || true"
+              ContinueOnError="true"
+              IgnoreExitCode="false" />
+
+    <Message Text="DB2 native library symlinks created successfully" Importance="high" />
+  </Target>
+
+</Project>
